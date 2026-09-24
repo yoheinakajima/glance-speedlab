@@ -16,6 +16,7 @@ export type Backend = 'glance' | 'mlx-8bit';
 
 export type CapturedFrame = {
   imageBase64: string;
+  capturedAt: number;
   width: number;
   height: number;
   bytes: number;
@@ -51,8 +52,9 @@ export type DecideResponse = {
 export type Sample = {
   sequence: number;
   at: number;
+  capturedAt: number;
   loopMs: number;
   requestMs: number;
-  capture: Omit<CapturedFrame, 'imageBase64'>;
+  capture: Omit<CapturedFrame, 'imageBase64' | 'capturedAt'>;
   response: DecideResponse;
 };
