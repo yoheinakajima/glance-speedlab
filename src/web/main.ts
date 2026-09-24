@@ -141,6 +141,7 @@ app.innerHTML = `
 const video = element<HTMLVideoElement>('camera');
 const camera = new CameraCapture(video);
 const metrics = new SampleWindow(120);
+let measurementVersion = 0;
 let active = false;
 const sessionId = `live-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
 
@@ -154,6 +155,7 @@ const runner = new LiveRunner({
   getBackend: selectedBackend,
   getChoiceMethod: () => element<HTMLSelectElement>('choice-method').value === 'letter' ? 'letter' : 'independent',
   getRecording: () => element<HTMLInputElement>('record').checked,
+  getMeasurementVersion: () => measurementVersion,
   getTemporalReuse: () => ({
     enabled: element<HTMLInputElement>('temporal-reuse').checked,
     threshold: Number(element<HTMLSelectElement>('motion-threshold').value),
@@ -184,10 +186,7 @@ element('start').addEventListener('click', async () => {
 });
 
 element('stop').addEventListener('click', stop);
-element('reset').addEventListener('click', () => {
-  metrics.clear();
-  renderSummary();
-});
+element('reset').addEventListener('click', resetMeasurementWindow);
 
 for (const input of document.querySelectorAll<HTMLInputElement>('[data-question]')) {
   input.addEventListener('change', () => {
@@ -195,8 +194,10 @@ for (const input of document.querySelectorAll<HTMLInputElement>('[data-question]
     if (customEnabled) customEnabled.hidden = !questionInput('custom_yesno').checked;
     const count = selectedQuestions().length;
     element('question-count').textContent = `${count} native batch item${count === 1 ? '' : 's'}`;
+    resetMeasurementWindow();
   });
 }
+element<HTMLInputElement>('custom-prompt').addEventListener('input', resetMeasurementWindow);
 
 for (const control of document.querySelectorAll<HTMLSelectElement>('#long-edge, #quality, #choice-method, #motion-threshold, #max-stale')) {
   control.addEventListener('change', resetMeasurementWindow);
@@ -272,6 +273,7 @@ function renderSummary(): void {
 }
 
 function resetMeasurementWindow(): void {
+  measurementVersion += 1;
   metrics.clear();
   renderSummary();
 }

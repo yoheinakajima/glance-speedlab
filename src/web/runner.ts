@@ -7,6 +7,7 @@ type RunnerOptions = {
   getBackend: () => Backend;
   getChoiceMethod: () => ChoiceMethod;
   getRecording: () => boolean;
+  getMeasurementVersion?: () => number;
   getTemporalReuse?: () => { enabled: boolean; threshold: number; maxStaleMs: number };
   measureMotion?: () => number;
   commitMotionReference?: () => void;
@@ -39,6 +40,7 @@ export class LiveRunner {
 
   async #run(generation: number): Promise<void> {
     while (generation === this.#generation) {
+      const measurementVersion = this.options.getMeasurementVersion?.() ?? 0;
       const questions = this.options.getQuestions();
       if (!questions.length) {
         this.options.onState('error', 'Enable at least one question.');
@@ -59,6 +61,7 @@ export class LiveRunner {
         this.options.onState('capturing');
         const frame = await this.options.capture(this.options.getConfig());
         if (generation !== this.#generation) return;
+        if ((this.options.getMeasurementVersion?.() ?? 0) !== measurementVersion) continue;
         this.options.onState('inferencing');
         this.#abort = new AbortController();
         const requestStartedAt = performance.now();
@@ -79,6 +82,7 @@ export class LiveRunner {
         const payload = await response.json() as DecideResponse & { error?: string };
         if (!response.ok) throw new Error(payload.error ?? `Request failed (${response.status}).`);
         if (generation !== this.#generation) return;
+        if ((this.options.getMeasurementVersion?.() ?? 0) !== measurementVersion) continue;
         this.#sequence += 1;
         const sample: Sample = {
           sequence: this.#sequence,
