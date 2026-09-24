@@ -75,17 +75,19 @@ export class CameraCapture {
     const height = Math.max(1, Math.round(sourceHeight * scale));
     if (this.canvas.width !== width) this.canvas.width = width;
     if (this.canvas.height !== height) this.canvas.height = height;
+    const capturedAt = performance.now();
     this.#context.drawImage(this.video, 0, 0, width, height);
     const blob = await canvasToBlob(this.canvas, config.quality);
-    const capturedAt = performance.now();
+    const jpegReadyAt = performance.now();
     const imageBase64 = await blobToBase64(blob);
     return {
       imageBase64,
+      capturedAt,
       width,
       height,
       bytes: blob.size,
-      captureMs: capturedAt - startedAt,
-      encodeMs: performance.now() - capturedAt,
+      captureMs: jpegReadyAt - startedAt,
+      encodeMs: performance.now() - jpegReadyAt,
     };
   }
 }

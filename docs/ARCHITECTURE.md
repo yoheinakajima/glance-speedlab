@@ -62,3 +62,26 @@ correctness, or the age of the supporting observation.
 - The gateway may record metadata only after the user opts in.
 - Opt-in records use `research/runs/<session>.jsonl`, schema version 1, with one metadata row per completed inference.
 - Aborted browser requests do not imply model cancellation: the current Glance server is single-request, synchronous inference.
+
+## Displayed answer age
+
+Answer age is `performance.now() - capturedAt` for the displayed result. The
+browser timestamps the frame immediately before drawing the video onto the
+capture canvas, before JPEG/base64 encoding and inference. Only an accepted
+sample replaces that timestamp; reuse, a pending request, and a failed request
+do not make the currently displayed answer younger.
+
+The UI refreshes the age every 250 ms while the camera is active, independently
+of inference. Each refresh reads the monotonic clock rather than counting timer
+ticks. Browser throttling or a busy main thread can delay the display update;
+this is not a hard refresh deadline. Stopping clears the answer, its timestamp,
+and the display timer. Resetting the measurement window leaves the age attached
+to the answer that is still displayed. Before the first result, age is `—`.
+
+This measures age since **browser frame sampling**, not camera sensor exposure.
+It excludes camera/video buffering before sampling, cannot detect an already
+stale or frozen video frame, and does not measure answer correctness or scene
+change detection latency. A freshly completed result can already be old because
+encoding and inference took time. The timestamp stays browser-local; request and
+recorded telemetry schemas are unchanged. The existing temporal-reuse refresh
+policy is unchanged and is not an observation-age bound.

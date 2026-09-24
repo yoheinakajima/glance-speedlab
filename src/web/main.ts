@@ -131,6 +131,8 @@ app.innerHTML = `
         <div class="trace-row total"><span>full loop</span><b id="trace-loop">—</b></div>
       </section>
 
+      <p class="control-note">Answer age: <b id="answer-age">—</b>. Time since the displayed answer's frame was sampled in the browser, not camera sensor age.</p>
+
       <label class="record-toggle">
         <input id="record" type="checkbox" />
         <span><b>Record timing metadata</b><small>Writes local JSONL. Never stores frames.</small></span>
@@ -145,6 +147,8 @@ const camera = new CameraCapture(video);
 const metrics = new SampleWindow(120);
 let measurementVersion = 0;
 let active = false;
+let answerCapturedAt: number | null = null;
+let answerAgeInterval: number | undefined;
 const sessionId = `live-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
 
 const runner = new LiveRunner({
@@ -181,6 +185,8 @@ element('start').addEventListener('click', async () => {
     await camera.start();
     active = true;
     document.body.classList.add('is-active');
+    window.clearInterval(answerAgeInterval);
+    answerAgeInterval = window.setInterval(renderAnswerAge, 250);
     runner.start();
   } catch (error) {
     element('error').textContent = error instanceof Error ? error.message : 'Camera could not start.';
@@ -227,6 +233,11 @@ function stop(): void {
   active = false;
   runner.stop();
   camera.stop();
+  window.clearInterval(answerAgeInterval);
+  answerAgeInterval = undefined;
+  answerCapturedAt = null;
+  element('answers').replaceChildren();
+  renderAnswerAge();
   document.body.classList.remove('is-active');
 }
 
@@ -262,6 +273,13 @@ function renderSample(sample: Sample): void {
     node.innerHTML = `<span>${escapeHtml(question?.label ?? id)}</span><strong>${escapeHtml(label)}</strong><div><i style="width:${Math.round(probability * 100)}%"></i></div><small>${Math.round(probability * 100)}% confidence</small>`;
     return node;
   }));
+  answerCapturedAt = Object.keys(sample.response.answers).length ? sample.capturedAt : null;
+  renderAnswerAge();
+}
+
+function renderAnswerAge(): void {
+  const age = answerCapturedAt === null ? NaN : performance.now() - answerCapturedAt;
+  element('answer-age').textContent = Number.isFinite(age) && age >= 0 ? milliseconds(age) : '—';
 }
 
 function renderSummary(): void {
