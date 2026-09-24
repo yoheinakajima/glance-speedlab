@@ -111,12 +111,14 @@ app.innerHTML = `
         <label><span>Forced refresh</span><select id="max-stale"><option value="250">250 ms</option><option value="500">500 ms</option><option value="1000" selected>1 second</option><option value="2000">2 seconds</option></select></label>
       </section>
 
-      <section class="metric-grid" aria-label="Rolling latency metrics">
+      <section class="metric-grid" aria-label="Rolling inference metrics">
         <div><span>Loop p95</span><strong id="loop-p95">—</strong><small>ms</small></div>
         <div><span>Model p50</span><strong id="model-p50">—</strong><small>ms</small></div>
         <div><span>Capture p50</span><strong id="capture-p50">—</strong><small>ms</small></div>
-        <div><span>Throughput</span><strong id="fps">—</strong><small>fps</small></div>
+        <div><span>Result rate</span><strong id="result-hz">—</strong><small>Hz</small></div>
       </section>
+
+      <p class="control-note">Processing rate: <b id="processing-hz">—</b> Hz (excludes waits). Result rate averages intervals between retained results, including waits and reuse; updates on completion.</p>
 
       <section class="trace">
         <div class="section-title"><span>Latest trace</span><small id="sample-count">0 / 120 samples</small></div>
@@ -268,7 +270,8 @@ function renderSummary(): void {
   element('loop-p95').textContent = summary.count ? integer(summary.loopP95) : '—';
   element('model-p50').textContent = summary.count ? integer(summary.modelP50) : '—';
   element('capture-p50').textContent = summary.count ? summary.captureP50.toFixed(1) : '—';
-  element('fps').textContent = summary.count ? summary.fps.toFixed(2) : '—';
+  element('result-hz').textContent = summary.resultHz === null ? '—' : summary.resultHz.toFixed(2);
+  element('processing-hz').textContent = summary.count ? summary.processingHz.toFixed(2) : '—';
   element('sample-count').textContent = `${summary.count} / 120 samples`;
 }
 

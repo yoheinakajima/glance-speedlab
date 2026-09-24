@@ -1,11 +1,11 @@
 import type { Sample } from './types';
 
 export class SampleWindow {
-  #samples: Sample[] = [];
+  #samples: { sample: Sample; completedAt: number }[] = [];
   constructor(readonly capacity = 120) {}
 
-  add(sample: Sample): void {
-    this.#samples.push(sample);
+  add(sample: Sample, completedAt = performance.now()): void {
+    this.#samples.push({ sample, completedAt });
     if (this.#samples.length > this.capacity) this.#samples.shift();
   }
 
@@ -18,14 +18,19 @@ export class SampleWindow {
   }
 
   summary(): MetricSummary {
-    const loops = this.#samples.map((sample) => sample.loopMs);
-    const requests = this.#samples.map((sample) => sample.requestMs);
-    const captures = this.#samples.map((sample) => sample.capture.captureMs + sample.capture.encodeMs);
-    const upstream = this.#samples.map((sample) => sample.response.speedlab.upstreamMs);
-    const model = this.#samples.map((sample) => totalModelMs(sample.response.timing_ms));
+    const loops = this.#samples.map(({ sample }) => sample.loopMs);
+    const requests = this.#samples.map(({ sample }) => sample.requestMs);
+    const captures = this.#samples.map(({ sample }) => sample.capture.captureMs + sample.capture.encodeMs);
+    const upstream = this.#samples.map(({ sample }) => sample.response.speedlab.upstreamMs);
+    const model = this.#samples.map(({ sample }) => totalModelMs(sample.response.timing_ms));
+    const first = this.#samples[0];
+    const last = this.#samples.at(-1);
+    const elapsedMs = first && last ? last.completedAt - first.completedAt : 0;
     return {
       count: this.count,
-      fps: loops.length ? 1_000 / mean(loops) : 0,
+      processingHz: loops.length ? 1_000 / mean(loops) : 0,
+      // N completions define N - 1 intervals, including waits and reuse.
+      resultHz: this.count >= 2 && elapsedMs > 0 ? (this.count - 1) * 1_000 / elapsedMs : null,
       loopP50: percentile(loops, 0.5),
       loopP95: percentile(loops, 0.95),
       requestP50: percentile(requests, 0.5),
@@ -38,7 +43,8 @@ export class SampleWindow {
 
 export type MetricSummary = {
   count: number;
-  fps: number;
+  processingHz: number;
+  resultHz: number | null;
   loopP50: number;
   loopP95: number;
   requestP50: number;
